@@ -1,0 +1,23 @@
+services:
+  bambu-monitor:
+    build: .
+    image: bambu-monitor:1.1.0
+    container_name: bambu-monitor
+    restart: unless-stopped
+
+    # 局域网扫描依赖 UDP 组播（239.255.255.250:1990/2021）。
+    # Linux 下建议使用 host 网络，扫描和 MQTT 都最省事。
+    # 若改用 bridge，请注释 network_mode，并打开下面的 ports。
+    network_mode: host
+    # ports:
+    #   - "8088:8088"
+
+    volumes:
+      # 网页添加/移除打印机需要写 config.json，因此不要加 :ro
+      - ./config.json:/app/config.json
+      # 累计工时数据
+      - ./data:/app/data
+
+    environment:
+      - BAMBU_USAGE_FILE=/app/data/usage.json
+      - BAMBU_PORT=8088

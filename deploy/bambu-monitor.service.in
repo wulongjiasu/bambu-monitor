@@ -1,0 +1,26 @@
+[Unit]
+Description=Bambu Lab printer monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@USER@
+WorkingDirectory=@PREFIX@
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@PREFIX@/.venv/bin/python -u @PREFIX@/server.py --config @PREFIX@/config.json --port @PORT@
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# 安全加固：系统目录只读，禁止提权
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=@PREFIX@
+
+[Install]
+WantedBy=multi-user.target

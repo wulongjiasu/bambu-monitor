@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a0e13">
+  <title>打印工坊 · 拓竹打印机监控</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322c55e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 8V4h10v4'/%3E%3Crect x='3.5' y='8' width='17' height='9' rx='2'/%3E%3Cpath d='M8 17v3h8v-3'/%3E%3Ccircle cx='12' cy='12.5' r='1.8'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="打印工坊首页">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 8V4.5h10V8"/>
+          <rect x="3.5" y="8" width="17" height="9" rx="2"/>
+          <path d="M8 17v2.5h8V17"/>
+          <circle cx="12" cy="12.5" r="1.8"/>
+          <path d="M6.5 12.5h.01M17.5 12.5h.01"/>
+        </svg>
+      </span>
+      <span class="brand__text">
+        <strong id="app-title">打印工坊</strong>
+        <span>Bambu Lab · 局域网实时监控</span>
+      </span>
+    </a>
+
+    <div class="summary" aria-label="运行总览">
+      <div class="stat"><b id="stat-online">–</b><span>在线</span></div>
+      <div class="stat"><b id="stat-printing">–</b><span>打印中</span></div>
+      <div class="stat"><b id="stat-paused">–</b><span>已暂停</span></div>
+      <div class="stat stat--alert"><b id="stat-error">–</b><span>异常</span></div>
+    </div>
+
+    <div class="topbar__right">
+      <span class="connection is-connecting" id="connection">
+        <i class="connection__dot"></i>
+        <span id="connection-text">连接中</span>
+      </span>
+      <time id="clock" class="clock">--:--:--</time>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="toolbar">
+      <nav class="tabs" id="tabs" aria-label="按状态筛选">
+        <button class="tab is-active" data-filter="all">全部 <span class="tab__count" data-count="all">0</span></button>
+        <button class="tab" data-filter="running">打印中 <span class="tab__count" data-count="running">0</span></button>
+        <button class="tab" data-filter="paused">已暂停 <span class="tab__count" data-count="paused">0</span></button>
+        <button class="tab" data-filter="finished">已完成 <span class="tab__count" data-count="finished">0</span></button>
+        <button class="tab" data-filter="error">异常 <span class="tab__count" data-count="error">0</span></button>
+        <button class="tab" data-filter="offline">离线 <span class="tab__count" data-count="offline">0</span></button>
+      </nav>
+
+      <button class="btn btn--add" id="add-open" type="button" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        添加打印机
+      </button>
+
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/>
+          <path d="m20 20-3.2-3.2"/>
+        </svg>
+        <input id="search" type="search" placeholder="搜索名称、序列号、IP 或文件…" autocomplete="off" spellcheck="false">
+      </label>
+    </div>
+
+    <section class="grid" id="grid" aria-live="off"></section>
+
+    <div class="empty" id="empty" hidden>
+      <span class="empty__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 8V4.5h10V8"/>
+          <rect x="3.5" y="8" width="17" height="9" rx="2"/>
+          <path d="M8 17v2.5h8V17"/>
+          <circle cx="12" cy="12.5" r="1.8"/>
+        </svg>
+      </span>
+      <p id="empty-title">还没有打印机</p>
+      <span id="empty-sub">点击「添加打印机」扫描局域网，或手动填写设备信息。</span>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>数据经局域网 MQTT 直连打印机，不经过云端</span>
+    <span>Bambu Lab Monitor · <span id="footer-count">0</span> 台设备</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog class="modal" id="printer-dialog" aria-labelledby="printer-dialog-title">
+    <form class="modal__panel" id="printer-form" autocomplete="off">
+      <header class="modal__head">
+        <div>
+          <h2 id="printer-dialog-title">添加打印机</h2>
+          <p>扫描当前局域网，或手动填写设备信息。</p>
+        </div>
+        <button type="button" class="modal__close" id="dialog-close" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="scan">
+        <button type="button" class="btn btn--scan" id="scan-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 12h.01"/>
+            <path d="M8.5 8.5a5 5 0 0 0 0 7"/>
+            <path d="M5.6 5.6a9 9 0 0 0 0 12.8"/>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            <path d="M18.4 5.6a9 9 0 0 1 0 12.8"/>
+          </svg>
+          <span id="scan-btn-text">扫描局域网</span>
+        </button>
+        <span class="scan__status" id="scan-status">自动发现同网段的拓竹打印机（约 10 秒）</span>
+      </div>
+
+      <ul class="found-list" id="scan-results" hidden></ul>
+
+      <div class="fields">
+        <label class="field">
+          <span>名称</span>
+          <input name="name" maxlength="40" placeholder="例如 X1C-01">
+        </label>
+        <label class="field">
+          <span>型号</span>
+          <input name="model" list="model-options" maxlength="40" placeholder="X1 Carbon / P1S / A1 …">
+        </label>
+        <label class="field field--wide">
+          <span>序列号 <em>15~18 位</em></span>
+          <input name="serial" required maxlength="18" placeholder="01S00A000000001" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>IP 地址</span>
+          <input name="ip" required inputmode="decimal" placeholder="192.168.1.101" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>访问码 <em>区分大小写</em></span>
+          <input name="access_code" required maxlength="64" placeholder="8 位访问码" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>起始工时 <em>可选</em></span>
+          <input name="baseline_hours" type="number" min="0" step="0.1" placeholder="0">
+        </label>
+      </div>
+
+      <p class="modal__hint">序列号与访问码可在打印机屏幕的「设备信息 / 网络设置」中查看。</p>
+
+      <footer class="modal__foot">
+        <button type="button" class="btn btn--ghost" id="dialog-cancel">取消</button>
+        <button type="submit" class="btn btn--primary" id="dialog-submit">添加</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <datalist id="model-options">
+    <option value="X1 Carbon"></option>
+    <option value="X1E"></option>
+    <option value="P1S"></option>
+    <option value="P1P"></option>
+    <option value="A1"></option>
+    <option value="A1 mini"></option>
+    <option value="H2D"></option>
+    <option value="H2S"></option>
+    <option value="P2S"></option>
+    <option value="X2D"></option>
+  </datalist>
+
+  <template id="card-template">
+    <article class="card status-idle">
+      <div class="card__head">
+        <span class="pill"><i class="dot"></i><span data-f="status">待机</span></span>
+        <div class="card__head-right">
+          <span class="model" data-f="model">拓竹</span>
+          <button class="card__toggle" type="button" aria-expanded="false" aria-label="展开详情" title="展开详情">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="card__title">
+        <h2 data-f="name">—</h2>
+        <p class="file" data-f="file">—</p>
+      </div>
+
+      <div class="progress">
+        <div class="ring" role="img" aria-label="打印进度 0%">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="ring__track" cx="50" cy="50" r="42"/>
+            <circle class="ring__value" cx="50" cy="50" r="42" pathLength="100"/>
+          </svg>
+          <span class="ring__label"><b data-f="progress">0</b><i>%</i></span>
+        </div>
+        <dl class="facts">
+          <div><dt>剩余时间</dt><dd data-f="remaining">—</dd></div>
+          <div><dt>层数</dt><dd data-f="layer">—</dd></div>
+          <div><dt>速度</dt><dd data-f="speed">—</dd></div>
+          <div><dt>累计工时</dt><dd data-f="usage" title="累计工作时间">—</dd></div>
+        </dl>
+      </div>
+
+      <p class="card__error" hidden></p>
+
+      <div class="card__details">
+        <div class="card__details-inner">
+          <div class="fans">
+            <div class="fan" data-fan="cooling" title="部件冷却风扇">
+              <div class="fan__head"><span>部件风扇</span><b>—</b></div>
+              <div class="meter"><i></i></div>
+            </div>
+            <div class="fan" data-fan="heatbreak" title="热端散热风扇">
+              <div class="fan__head"><span>热端风扇</span><b>—</b></div>
+              <div class="meter"><i></i></div>
+            </div>
+            <div class="fan" data-fan="aux" title="辅助冷却风扇">
+              <div class="fan__head"><span>辅助风扇</span><b>—</b></div>
+              <div class="meter"><i></i></div>
+            </div>
+            <div class="fan" data-fan="chamber" title="腔体风扇">
+              <div class="fan__head"><span>腔体风扇</span><b>—</b></div>
+              <div class="meter"><i></i></div>
+            </div>
+          </div>
+
+          <div class="temps">
+            <div class="temp">
+              <span>喷嘴</span>
+              <b><span data-f="nozzle">—</span><em data-f="nozzle-target"></em></b>
+            </div>
+            <div class="temp">
+              <span>热床</span>
+              <b><span data-f="bed">—</span><em data-f="bed-target"></em></b>
+            </div>
+            <div class="temp" data-temp="chamber">
+              <span>腔体</span>
+              <b><span data-f="chamber">—</span><em data-f="chamber-target"></em></b>
+            </div>
+          </div>
+
+          <div class="card__manage" hidden>
+            <button type="button" class="link-btn" data-action="remove">从监控中移除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card__foot">
+        <span class="foot__left">
+          <span class="wifi" data-f="wifi" title="WiFi 信号强度">
+            <span class="wifi__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <b data-f="wifi-text">—</b>
+          </span>
+          <span class="ip" data-f="ip" title="内网 IP">—</span>
+        </span>
+        <span class="updated" data-f="updated">暂无数据</span>
+      </div>
+
+      <div class="actions" hidden>
+        <button type="button" data-action="pause">暂停</button>
+        <button type="button" data-action="resume">继续</button>
+        <button type="button" class="danger" data-action="stop">停止</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

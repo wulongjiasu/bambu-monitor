@@ -1,0 +1,43 @@
+{
+  "title": "打印工坊",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8088,
+    "allow_control": false,
+    "allow_manage": true
+  },
+  "printers": [
+    {
+      "name": "X1C-01",
+      "model": "X1 Carbon",
+      "serial": "01S00A000000001",
+      "ip": "192.168.1.101",
+      "access_code": "12345678",
+      "baseline_hours": 0
+    },
+    {
+      "name": "P1S-01",
+      "model": "P1S",
+      "serial": "01P00A000000002",
+      "ip": "192.168.1.102",
+      "access_code": "12345678",
+      "baseline_hours": 0
+    },
+    {
+      "name": "A1-01",
+      "model": "A1",
+      "serial": "03900A000000003",
+      "ip": "192.168.1.103",
+      "access_code": "12345678",
+      "baseline_hours": 0
+    },
+    {
+      "name": "A1mini-01",
+      "model": "A1 mini",
+      "serial": "03000A000000004",
+      "ip": "192.168.1.104",
+      "access_code": "12345678",
+      "baseline_hours": 0
+    }
+  ]
+}
